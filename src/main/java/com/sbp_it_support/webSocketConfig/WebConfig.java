@@ -13,7 +13,7 @@ public class WebConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOrigins("*") // LAN / Remote PC အားလုံး allow
+                        .allowedOrigins("*")
                         .allowedMethods("GET", "POST", "PUT", "DELETE");
             }
         };
