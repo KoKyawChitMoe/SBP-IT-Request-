@@ -10,10 +10,10 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -61,8 +61,10 @@ public class TicketService {
         ticketRepository.deleteById(id);
     }
 
-    public byte[] exportToExcel(String name, String priority, String department, Ticket.Status status) {
-        List<Ticket> tickets = filterTickets(name, priority, department, status);
+    public byte[] exportToExcel(String name, String priority, String department, Ticket.Status status, String startDateStr, String endDateStr) {
+        LocalDateTime startDate = startDateStr != null ? LocalDate.parse(startDateStr).atStartOfDay() : null;
+        LocalDateTime endDate = endDateStr != null ? LocalDate.parse(endDateStr).atTime(23, 59, 59) : null;
+        List<Ticket> tickets = filterTickets(name, priority, department, status, startDate, endDate);
 
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Tickets");
@@ -99,7 +101,15 @@ public class TicketService {
         }
     }
 
-    private List<Ticket> filterTickets(String name, String priority, String department, Ticket.Status status) {
+    private List<Ticket> filterTickets(String name, String priority, String department, Ticket.Status status, LocalDateTime startDate, LocalDateTime endDate) {
+        // Use repository method with date range - add this method to repo
+        if (startDate != null && endDate != null) {
+            if (name != null && priority != null && department != null && status != null) {
+                return ticketRepository.findByNameAndPriorityAndDepartmentAndStatusAndCreatedDateBetween(name, priority, department, status, startDate, endDate);
+            } // Add more combinations if needed, or simplify to date only for now
+            return ticketRepository.findByCreatedDateBetween(startDate, endDate);
+        }
+        // Existing filters without date...
         if (name != null && priority != null && department != null && status != null) {
             return ticketRepository.findByNameAndPriorityAndDepartmentAndStatus(name, priority, department, status);
         } else if (name != null && priority != null) {
@@ -111,12 +121,5 @@ public class TicketService {
         } else {
             return ticketRepository.findAll();
         }
-    }
-
-    public List<Ticket> filterTickets(String name, String priority, String department, Ticket.Status status, LocalDate date) {
-        if (name != null && priority != null && department != null && status != null && date != null) {
-            return ticketRepository.findByNameAndPriorityAndDepartmentAndStatusAndDate(name, priority, department, status, date);
-        }
-        return ticketRepository.findAll();
     }
 }

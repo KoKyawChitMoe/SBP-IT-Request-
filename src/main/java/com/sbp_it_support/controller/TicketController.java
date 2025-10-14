@@ -47,28 +47,31 @@ public class TicketController {
     }
 
     @GetMapping("/export")
-    public ResponseEntity<byte[]> exportToExcel(
+    public ResponseEntity<?> exportToExcel(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String priority,
             @RequestParam(required = false) String department,
-            @RequestParam(required = false) Ticket.Status status
+            @RequestParam(required = false) Ticket.Status status,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
     ) {
-        byte[] excelBytes = ticketService.exportToExcel(name, priority, department, status);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-        headers.setContentDispositionFormData("attachment", "tickets.xlsx");
-
-        return new ResponseEntity<>(excelBytes, headers, HttpStatus.OK);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTicket(@PathVariable Long id) {
         try {
-            ticketService.deleteTicket(id);
-            return ResponseEntity.noContent().build();
+            byte[] excelBytes = ticketService.exportToExcel(name, priority, department, status, startDate, endDate);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            ContentDisposition disposition = ContentDisposition.builder("attachment")
+                    .filename("tickets.xlsx")
+                    .build();
+            headers.setContentDisposition(disposition);
+
+            return new ResponseEntity<>(excelBytes, headers, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            // Handle no data or export error
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(e.getMessage()));
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket not found");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorResponse("Server error during export: " + e.getMessage()));
         }
     }
 }
